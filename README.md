@@ -6,15 +6,19 @@ k3s-кластер из двух нод, развёрнутый Ansible-ом, с
 
 ## Архитектура
 
-    push ───► GitHub Actions (ansible --check)
-                          │
-        ┌─────────────────┴───────────────────┐
-        ▼                                     ▼
-┌──────────────────────┐        ┌──────────────────────┐
-│ k8s-node1 (VPS)      │        │ k8s-node2 (VPS)      │
-│ k3s server (CP)      │◄─ wg0─►│ k3s agent            │
-│ zabbix-agent2        │        │ zabbix-agent2        │
-└──────────────────────┘        └──────────────────────┘
+~~~
+                 ┌─────────────────────────────┐
+  push ────────► │ GitHub Actions: ansible --check │
+                 └─────────────────────────────┘
+                              │
+      ┌───────────────────────┴─────────────────────┐
+      ▼                                             ▼
+┌────────────────────┐               ┌────────────────────┐
+│ k8s-node1 (VPS)    │               │ k8s-node2 (VPS)    │
+│ k3s server (CP)    │◄─── wg0 ─────►│ k3s agent          │
+│ zabbix-agent2      │               │ zabbix-agent2      │
+└────────────────────┘               └────────────────────┘
+~~~
 
 ## Стек
 
@@ -22,27 +26,31 @@ Ansible · k3s · wireguard-native · GitHub Actions · Zabbix Agent2 · Ubuntu 
 
 ## Структура
 
-    ansible/
-    ├── playbook.yaml            # k3s, потом zabbix-agent
-    ├── inventory/
-    │   ├── hosts.ini.example    # шаблон (реальный — в .gitignore)
-    │   └── host_vars/           # реальные IP и токен — вне git
-    └── roles/
-        ├── k3s/                 # server + agent, токен из переменной
-        └── zabbix-agent/        # метрики обеих нод в Zabbix
-    manifests/                   # Kubernetes-манифесты приложений
-    .github/workflows/           # CI: dry-run плейбука на каждый push
+~~~
+ansible/
+├── playbook.yaml            # k3s, потом zabbix-agent
+├── inventory/
+│   ├── hosts.ini.example    # шаблон (реальный — в .gitignore)
+│   └── host_vars/           # реальные IP и токен — вне git
+└── roles/
+    ├── k3s/                 # server + agent, токен из переменной
+    └── zabbix-agent/        # метрики обеих нод в Zabbix
+manifests/                   # Kubernetes-манифесты приложений
+.github/workflows/           # CI: dry-run на каждый push
+~~~
 
 ## Запуск
 
-    cp ansible/inventory/hosts.ini.example ansible/inventory/hosts.ini
-    # заполнить IP и создать host_vars/secrets.yml
+~~~bash
+cp ansible/inventory/hosts.ini.example ansible/inventory/hosts.ini
+# заполнить IP и создать host_vars/secrets.yml
 
-    ansible-playbook -i ansible/inventory/hosts.ini ansible/playbook.yaml --check
-    ansible-playbook -i ansible/inventory/hosts.ini ansible/playbook.yaml
+ansible-playbook -i ansible/inventory/hosts.ini ansible/playbook.yaml --check
+ansible-playbook -i ansible/inventory/hosts.ini ansible/playbook.yaml
 
-    # проверка на control-plane ноде:
-    k3s kubectl get nodes
+# проверка на control-plane ноде:
+k3s kubectl get nodes
+~~~
 
 ## Грабли и решения
 
