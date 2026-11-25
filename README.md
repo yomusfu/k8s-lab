@@ -12,7 +12,7 @@ k3s-кластер из двух нод, развёрнутый Ansible-ом, с
         ▼                                     ▼
 ┌──────────────────────┐        ┌──────────────────────┐
 │ k8s-node1 (VPS)      │        │ k8s-node2 (VPS)      │
-│ k3s server (CP)      │◄─ wg0 ─►│ k3s agent            │
+│ k3s server (CP)      │◄─ wg0─►│ k3s agent            │
 │ zabbix-agent2        │        │ zabbix-agent2        │
 └──────────────────────┘        └──────────────────────┘
 
