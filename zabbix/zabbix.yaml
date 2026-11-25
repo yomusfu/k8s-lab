@@ -1,0 +1,183 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: monitoring
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: zabbix-db
+  namespace: monitoring
+type: Opaque
+stringData:
+  POSTGRES_PASSWORD: "zabbixsecretpw"
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: zabbix-postgres
+  namespace: monitoring
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres
+  namespace: monitoring
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      nodeSelector:
+        kubernetes.io/hostname: k8s-node1
+      containers:
+        - name: postgres
+          image: postgres:16-alpine
+          env:
+            - name: POSTGRES_USER
+              value: zabbix
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: zabbix-db
+                  key: POSTGRES_PASSWORD
+            - name: POSTGRES_DB
+              value: zabbix
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: zabbix-postgres
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  namespace: monitoring
+spec:
+  selector:
+    app: postgres
+  ports:
+    - port: 5432
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: zabbix-server
+  namespace: monitoring
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: zabbix-server
+  template:
+    metadata:
+      labels:
+        app: zabbix-server
+    spec:
+      nodeSelector:
+        kubernetes.io/hostname: k8s-node1
+      containers:
+        - name: zabbix-server
+          image: zabbix/zabbix-server-pgsql:alpine-7.0-latest
+          env:
+            - name: DB_SERVER_HOST
+              value: postgres
+            - name: POSTGRES_USER
+              value: zabbix
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: zabbix-db
+                  key: POSTGRES_PASSWORD
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: zabbix-server
+  namespace: monitoring
+spec:
+  type: NodePort
+  selector:
+    app: zabbix-server
+  ports:
+    - name: zabbix
+      port: 10051
+      nodePort: 30051
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: zabbix-web
+  namespace: monitoring
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: zabbix-web
+  template:
+    metadata:
+      labels:
+        app: zabbix-web
+    spec:
+      nodeSelector:
+        kubernetes.io/hostname: k8s-node1
+      containers:
+        - name: zabbix-web
+          image: zabbix/zabbix-web-nginx-pgsql:alpine-7.0-latest
+          env:
+            - name: DB_SERVER_HOST
+              value: postgres
+            - name: POSTGRES_USER
+              value: zabbix
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: zabbix-db
+                  key: POSTGRES_PASSWORD
+            - name: ZBX_SERVER_HOST
+              value: zabbix-server
+            - name: PHP_TZ
+              value: Europe/Moscow
+          ports:
+            - containerPort: 8080
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: zabbix-web
+  namespace: monitoring
+spec:
+  type: NodePort
+  selector:
+    app: zabbix-web
+  ports:
+    - port: 80
+      targetPort: 8080
+      nodePort: 30080
+

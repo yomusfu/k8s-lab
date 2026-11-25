@@ -1,0 +1,7 @@
+---
+k3s_version_channel: stable
+k3s_server_ip: "SET_IN_SECRETS"
+k3s_agent_ip: "SET_IN_SECRETS"
+
+k3s_token: "change-me-super-secret-token"
+k3s_version: ""

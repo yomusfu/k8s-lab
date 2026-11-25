@@ -1,0 +1,33 @@
+name: Ansible dry-run
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Установить Ansible
+        run: pipx install ansible-core
+
+      - name: Настроить SSH
+        env:
+          SSH_KEY_B64: ${{ secrets.SSH_KEY_B64 }}
+        run: |
+          set -o pipefail
+          mkdir -p ~/.ssh
+          echo "$SSH_KEY_B64" | base64 -d | tr -d '\r' > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keygen -lf ~/.ssh/id_ed25519
+          ssh-keyscan ${{ secrets.K3S_SERVER_IP }} >> ~/.ssh/known_hosts
+          ssh-keyscan ${{ secrets.K3S_AGENT_IP }} >> ~/.ssh/known_hosts
+          ssh -o BatchMode=yes root@${{ secrets.K3S_SERVER_IP }} "echo connected"
+
+      - name: Dry-run playbook
+        run: ansible-playbook -i inventory/hosts.ini playbook.yaml --check -u root
+        working-directory: ansible
+

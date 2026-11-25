@@ -1,0 +1,39 @@
+---
+- name: Отключить swap
+  ansible.builtin.shell: swapoff -a && sed -i '/ swap / s/^/#/' /etc/fstab
+  args:
+    executable: /bin/bash
+  changed_when: false
+
+- name: Прописать имена нод в /etc/hosts
+  ansible.builtin.lineinfile:
+    path: /etc/hosts
+    line: "{{ item }}"
+  loop:
+    - ""{{ k3s_server_ip }} k8s-node1""
+    - ""{{ k3s_agent_ip }} k8s-node2""
+
+
+- name: Установить k3s server
+  when: inventory_hostname in groups['k3s_server']
+  ansible.builtin.shell: >-
+    curl -sfL https://get.k3s.io | sh -s - server
+    --disable-traefik
+    --flannel-backend=wireguard-native
+    --node-ip={{ k3s_server_ip }}
+    --node-external-ip={{ k3s_server_ip }}
+    --tls-san={{ k3s_server_ip }}
+    --token {{ k3s_token }}
+  args:
+    creates: /usr/local/bin/k3s
+
+- name: Установить k3s agent
+  when: inventory_hostname in groups['k3s_agents']
+  ansible.builtin.shell: >-
+    curl -sfL https://get.k3s.io | sh -s - agent
+    K3S_URL=https://{{ k3s_server_ip }}:6443
+    K3S_TOKEN={{ k3s_token }}
+    --node-ip={{ k3s_agent_ip }}
+    --node-external-ip={{ k3s_agent_ip }}
+  args:
+    creates: /usr/local/bin/k3s

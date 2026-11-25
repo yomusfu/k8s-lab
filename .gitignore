@@ -1,0 +1,10 @@
+kubeconfig.yaml
+*.kubeconfig
+*.pem
+*.key
+id_rsa*
+ansible/inventory/hosts.ini
+*.swp
+.ansible/
+vault-pass.txt
+ansible/inventory/host_vars/

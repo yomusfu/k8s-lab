@@ -1,0 +1,19 @@
+
+---
+- name: K3s server
+  hosts: k3s_server
+  become: true
+  roles:
+    - k3s
+
+- name: K3s agents
+  hosts: k3s_agents
+  become: true
+  roles:
+    - k3s
+
+- name: Zabbix agents
+  hosts: all
+  become: true
+  roles:
+    - zabbix-agent

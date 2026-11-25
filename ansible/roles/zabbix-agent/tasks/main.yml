@@ -1,0 +1,32 @@
+---
+- name: Скачать zabbix-release для Ubuntu 24.04
+  ansible.builtin.get_url:
+    url: https://repo.zabbix.com/zabbix/7.0/ubuntu/pool/main/z/zabbix-release/zabbix-release_latest_7.0+ubuntu24.04_all.deb
+    dest: /tmp/zabbix-release.deb
+    mode: "0644"
+
+- name: Установить репозиторий Zabbix
+  ansible.builtin.apt:
+    deb: /tmp/zabbix-release.deb
+
+- name: Обновить кэш apt
+  ansible.builtin.apt:
+    update_cache: true
+
+- name: Установить zabbix-agent
+  ansible.builtin.apt:
+    name: zabbix-agent
+    state: present
+
+- name: Настроить агента
+  ansible.builtin.template:
+    src: zabbix_agentd.conf.j2
+    dest: /etc/zabbix/zabbix_agentd.conf
+    mode: "0644"
+  notify: Перезапустить zabbix-agent
+
+- name: Включить и запустить агента
+  ansible.builtin.systemd:
+    name: zabbix-agent
+    enabled: true
+    state: started
